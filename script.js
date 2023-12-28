@@ -2,6 +2,10 @@ const carousel = document.querySelector('.carousel');
 const arrowBtn = document.querySelectorAll('.wrapper > button');
 let cards = [...carousel.querySelectorAll('.card')];
 let cardOffset = cards.map(card => card.offsetLeft);
+window.addEventListener('resize', () => {
+    cards = [...carousel.querySelectorAll('.card')];
+    cardOffset = cards.map(card => card.offsetLeft);
+});
 
 arrowBtn.forEach(btn => {
     btn.addEventListener('click', () => {

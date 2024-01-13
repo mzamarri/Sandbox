@@ -8,11 +8,14 @@
 </head>
 <body>
     <div>
-        <input type="text" placeholder="Full Name">
-        <input type="text" placeholder="Email">
-        <input type="text" placeholder="Phone Number">
-        <input type="text" id="first" placeholder="Subject">
-        <textarea name="" id="" cols="30" rows="10" placeholder="Message"></textarea>
+        <form action="/contact-form/" method="POST">
+            <input type="text" name="fullName" placeholder="Full Name">
+            <input type="text" name="email" placeholder="Email">
+            <input type="text" name="phoneNumber" placeholder="Phone Number">
+            <input type="text" name="subject" id="" placeholder="Subject">
+            <textarea name="message" id="" cols="30" rows="10" placeholder="Message"></textarea>
+            <button type="submit">Submit</button>
+        </form>
     </div>
 </body>
 </html>

@@ -1,40 +1,89 @@
 const http = require("http");
-const path = require("path");
 const fs = require("fs");
 const querystring = require("querystring");
 const { google } = require("googleapis");
-const OAuth2 = google.auth.OAuth2;
+const env = require('dotenv').config();
+const clientSecret = require('./client_secret.json');
+const nodemailer = require('nodemailer');
 
-// OAuth2 client
-const oauth2Client = new OAuth2(
-    'process.env.CLIENT_ID',
-    'process.env.CLIENT_SECRET',
-    'http://localhost:3000/oauth2callback'
+// Creating oauth2Client
+const oauth2Client = new google.auth.OAuth2(
+    clientSecret.web.client_id,
+    clientSecret.web.client_secret,
 );
 
-console.log("OAuth2 client: ", oauth2Client);
+// Sets the credentials to the refresh token
+const refresh_token = process.env.REFRESH_TOKEN;
+// console.log("refresh token: ", refresh_token);
+oauth2Client.setCredentials({
+    refresh_token: refresh_token,
+});
 
-// generate a OAuth2 URL
+async function sendMail(subject, message) {
+    const client_id = clientSecret.web.client_id;
+    const client_secret = clientSecret.web.client_secret;
+    console.log("client id: ", client_id);
+    console.log("client secret: ", client_secret);
+    const refresh_token = process.env.REFRESH_TOKEN;
+    console.log("refresh token: ", refresh_token);
+    // Generate an access token
+    const tokenResponse = await oauth2Client.getAccessToken();
+    console.log("token response: ", tokenResponse);
+    console.log("Status: ", tokenResponse.res.config.validateStatus)
+    const access_token = tokenResponse.token;
+    console.log("access token: ", access_token);
+    const expiry_date = new Date(tokenResponse.res.data.expiry_date);
+    console.log(expiry_date);
+    let transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            type: 'OAuth2',
+            user: 'noreply.mazr@gmail.com',
+            clientId: client_id,
+            clientSecret: client_secret,
+            refreshToken: refresh_token,
+            accessToken: access_token,
+        }
+    });
+    let mailOptions = {
+        from: 'noreply.mazr@gmail.com',
+        to: 'miguelazamarripar@gmail.com',
+        subject: `${subject}`,
+        text: `${message}`
+    };
+    // send email
+    transporter.sendMail(mailOptions, function(err, info) {
+        if (err) {
+            console.log("error: ", err);
+        } else {
+            console.log("Email sent! \ninfo:", info);
+        }
+    });
+}
 
-function formHandler(req, res) {
-    let body = '';
+// function to handle form data
+function formHandler(req) {
+    return new Promise((resolve, reject) => {
+        let body = '';
         console.log("POST request received");
+        // adds data to body as it is received
         req.on('data', chunk => {
             body += chunk.toString(); // convert Buffer to string
             console.log("body: ", body);
         });
+        // once all data is received, resolve promise or reject if there is an error
         req.on('end', () => {
             console.log("body: ", body);
             const formData = querystring.parse(body);
-            console.log("form Data: ",  formData);
-            if (inputValidation(formData)) {
-                console.log("Form data is valid");
-                res.end('Received form data');
-            } else {
-                console.log("Form data is invalid");
-                res.end('form data invalid');
-            }
-        })
+            console.log("formData: ", formData);
+            resolve(formData);
+        });
+        // if there is an error, reject promise
+        req.on('error', (err) => {
+            console.error(err.stack);
+            reject(err);
+        });
+    })
 };
 
 // input validation function to check if all fields are filled out appropriately
@@ -75,49 +124,51 @@ function inputValidation(formData) {
 
 const server = http.createServer(function (req, res) {
     console.log("Request was made: " + req.url);
-
-    if (req.url === "/favicon.ico") {
-        res.writeHead(204, { 'Content-Type': 'image/x-icon' });
-        res.end(); // ignores favicon
-        console.log('favicon requested ignored');
-        return;
-    }
-    console.log("Request was made: " + req.url);
     console.log("Request method: " + req.method);
+
     if (req.method === 'POST' && req.url === '/contact-form/') {
-        formHandler(req, res);
-        return ;
+        formHandler(req).then(formData => {
+            if (inputValidation(formData)) {
+                console.log("Form data is valid");
+                const subject = formData.subject;
+                const message = `
+                    Name: ${formData.fullName}
+                    Email: ${formData.email}
+                    Phone Number: ${formData.phoneNumber}
+
+                    Message: 
+                    ${formData.message}
+                `.split('\n').map(line => line.trimStart()).join('\n');
+                // Now that input is validated, send email
+                sendMail(subject, message);
+                res.end("Message sent!")
+            } else {
+                console.log("Form data is invalid");
+                res.end('form data invalid');
+            }
+        });
     };
+
     let filePath = "." + req.url;
     if (filePath === "./") {
         filePath = "./index.html";
     }
 
-    // const extname = String(path.extname(filePath)).toLowerCase();
-    // const mimeTypes = {
-    //     '.html': 'text/html',
-    //     '.css': 'text/css',
-    //     '.js': 'text/javascript',
-    //     '.png': 'image/png',
-    //     '.jpg': 'image/jpg',
-    //     '.gif': 'image/gif',
-    //     '.json': 'application/json',
-    // }
-
-    // const contentType = mimeTypes[extname] || 'application/octet-stream';
-
-    fs.readFile(filePath, function(err, data) {
-        if (err) {
-            console.error("There was an error reading this file!", err);
-            return;
-        } else {
-            // res.writeHead(200, { 'Content-Type': contentType });
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(data, 'utf-8');
-        }
-    } )
+    // Check if file exists in working directory
+    if (fs.existsSync(filePath)) {
+        fs.readFile(filePath, function(err, data) {
+            if (err) {
+                console.error("There was an error reading this file!", err);
+                return;
+            } else {
+                // res.writeHead(200, { 'Content-Type': contentType });
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                res.end(data, 'utf-8');
+            }
+        });
+    }
 });
 
-server.listen(3000, () => {
-    console.log("Server is running on port 3000");
+server.listen(4000, () => {
+    console.log("Server is running on port 4000");
 });

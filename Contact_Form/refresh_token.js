@@ -1,6 +1,7 @@
 const http = require('http');
 const url = require('url');
 const fs = require('fs');
+const os = require('os');
 const { google } = require('googleapis');
 const clientSecret = require('./client_secret.json');
 const env = require('dotenv');
@@ -30,6 +31,36 @@ const authUrl = oauth2Client.generateAuthUrl({
 });
 console.log('Authorize this app by visiting this url:', authUrl);
 
+function overWriteRefreshToken(refreshToken) {
+    let lines; 
+    try {
+        lines = fs.readFileSync('./.env', 'utf8').split(os.EOL);
+        console.log('File read successfully');
+        console.log('lines: ', lines);
+    } catch (err) {
+        console.error("An error occured: ", err);
+    }
+
+    // Find the line that starts with REFRESH_TOKEN
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('REFRESH_TOKEN')) {
+            // Replace line with new REFRESH_TOKEN
+            lines[i] = `REFRESH_TOKEN=${refreshToken}`;
+            break;
+        }
+    }
+
+    // Join lines back together
+    let newEnvConfig = lines.join(os.EOL);
+
+    // Write back to .env file
+    try {
+        fs.writeFileSync('./.env', newEnvConfig);
+    } catch (err) {
+        console.error("An error occured: ", err);
+    }
+}
+
 // This function will be used to get the access token and refresh token
 async function getAccessToken() {
     const server = http.createServer(async (req, res) => {
@@ -56,14 +87,11 @@ async function getAccessToken() {
                         console.log('refresh token is the same');
                     } else {
                         console.log('refresh token is different');
-                        const envConfig = env.parse(fs.readFileSync('./.env'));
-                        envConfig.REFRESH_TOKEN = tokens.refresh_token;
-                        const newEnvConfig = Object.entries(envConfig).map(([key, value]) => `${key}=${value}`).join('\n');
-                        // Write back to .env file
-                        fs.writeFileSync('./.env', newEnvConfig);
+                        const refreshToken = tokens.refresh_token;
+                        overWriteRefreshToken(refreshToken)
                     }
                 } else {
-                    fs.writeFileSync('./.env', `REFRESH_TOKEN=${tokens.refresh_token}\n`);
+                    fs.writeAppendSync('./.env', `REFRESH_TOKEN=${tokens.refresh_token}\n`);
                     console.log('tokens written to .env file')
                 }
             }

@@ -22,6 +22,8 @@ oauth2Client.setCredentials({
 async function sendMail(subject, message) {
     const client_id = clientSecret.web.client_id;
     const client_secret = clientSecret.web.client_secret;
+    const USER = process.env.USER;
+    const TO = process.env.TO;
     console.log("client id: ", client_id);
     console.log("client secret: ", client_secret);
     const refresh_token = process.env.REFRESH_TOKEN;
@@ -46,8 +48,8 @@ async function sendMail(subject, message) {
         }
     });
     let mailOptions = {
-        from: 'noreply.mazr@gmail.com',
-        to: 'miguelazamarripar@gmail.com',
+        from: USER,
+        to: TO,
         subject: `${subject}`,
         text: `${message}`
     };
@@ -148,24 +150,31 @@ const server = http.createServer(function (req, res) {
             }
         });
     };
+    if (req.method === 'GET') {
+        let filePath = "." + req.url;
+        if (filePath === "./") {
+            filePath = "./index.html";
+        }
+        console.log(`Checking if file exists: ${filePath}`)
 
-    let filePath = "." + req.url;
-    if (filePath === "./") {
-        filePath = "./index.html";
-    }
-
-    // Check if file exists in working directory
-    if (fs.existsSync(filePath)) {
-        fs.readFile(filePath, function(err, data) {
-            if (err) {
-                console.error("There was an error reading this file!", err);
-                return;
-            } else {
-                // res.writeHead(200, { 'Content-Type': contentType });
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(data, 'utf-8');
-            }
-        });
+        // Check if file exists in working directory
+        if (fs.existsSync(filePath)) {
+            console.log(`File exists: ${filePath}`);
+            fs.readFile(filePath, function(err, data) {
+                if (err) {
+                    console.error("There was an error reading this file!", err);
+                    return;
+                } else {
+                    res.writeHead(200, { 'Content-Type': 'text/html' });
+                    res.end(data, 'utf-8');
+                }
+            });
+        }
+        else {
+            console.log(`File does not exist: ${filePath}`);
+            res.writeHead(404, { 'Content-Type': 'text/html' });
+            res.end("404 Not Found");
+        }
     }
 });
 

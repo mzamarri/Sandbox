@@ -1,0 +1,6 @@
+CREATE OR REPLACE PROCEDURE clear_tables() AS $$
+DECLARE
+
+BEGIN
+    FOR i IN 
+END

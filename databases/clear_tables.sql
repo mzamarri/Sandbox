@@ -1,6 +1,9 @@
 CREATE OR REPLACE PROCEDURE clear_tables() AS $$
 DECLARE
-
+    r RECORD;
 BEGIN
-    FOR i IN 
+    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname='public') LOOP
+        EXECUTE 'DROP TABLE IF EXISTS public.' || r.tablename || ' CASCADE';
+    END LOOP;
 END
+$$ LANGUAGE plpgsql;

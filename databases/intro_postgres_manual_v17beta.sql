@@ -26,6 +26,7 @@ INSERT INTO cities VALUES ('New York', '(4024.6, -420.69)');
 
 -- How to Query
 
+SELECT * FROM weather;
 SELECT * FROM weather ORDER BY city;
 SELECT * FROM weather ORDER BY temp_lo;
 SELECT DISTINCT city FROM weather; 
@@ -55,3 +56,9 @@ SELECT city, count(*), max(temp_lo) FROM weather GROUP BY city;
 SELECT city, count(*), max(temp_lo) FROM weather GROUP BY city HAVING max(temp_lo) < 60;
 SELECT city, count(*), max(temp_lo) FROM weather GROUP BY city HAVING city LIKE 'S%'; -- LIKE operator does pattern matching
 SELECT city, count(*) FILTER (WHERE temp_lo < 70), max(temp_lo) FROM weather GROUP BY city;
+
+-- Update command
+
+UPDATE weather SET temp_hi = temp_hi-2, temp_lo = temp_lo - 2
+    WHERE date > '2011-12-1';
+SELECT * FROM weather;
